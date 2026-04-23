@@ -158,7 +158,7 @@ function applyFilters() {
 
   currentRows = buildCleanMatrix(filteredRaw).filter((row) => {
     if (!query) return true;
-    return payload.columns.some((column) => cleanValue(row[column]).toLowerCase().includes(query));
+    return cleanValue(row.MATERIA).toLowerCase().includes(query);
   });
 
   const metrics = buildMetrics(currentRows);
