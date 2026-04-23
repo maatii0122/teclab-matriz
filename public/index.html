@@ -14,6 +14,7 @@
       </div>
       <nav class="nav" aria-label="Páginas">
         <button class="nav-button active" data-page="matrix">Matriz</button>
+        <button class="nav-button" data-page="abm">ABM</button>
         <button class="nav-button" data-page="info">Info</button>
       </nav>
 
@@ -59,6 +60,37 @@
         <div id="resultSummary" class="panel"></div>
         <div class="table-wrap">
           <table id="matrixTable"></table>
+        </div>
+      </section>
+
+      <section id="abmPage" class="page">
+        <h2>ABM de materias</h2>
+        <article class="panel">
+          <p>
+            Agregá, modificá o eliminá filas de materias. Los cambios quedan guardados en este navegador
+            y se reflejan en la matriz consultable.
+          </p>
+        </article>
+
+        <form id="abmForm" class="abm-form">
+          <div id="abmFields" class="abm-grid"></div>
+          <div class="toolbar">
+            <button type="submit" class="primary-button" id="saveRow">Guardar fila</button>
+            <button type="button" class="ghost-button" id="cancelEdit">Cancelar edición</button>
+            <button type="button" class="ghost-button danger" id="resetRows">Restaurar base original</button>
+          </div>
+        </form>
+
+        <div class="toolbar">
+          <label class="search">
+            Buscar materia para editar
+            <input id="abmSearch" type="search" placeholder="Nombre de la materia..." />
+          </label>
+          <button id="downloadAbm" class="primary-button">Descargar matriz editada CSV</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="abmTable"></table>
         </div>
       </section>
 

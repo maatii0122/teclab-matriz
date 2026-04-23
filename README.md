@@ -7,6 +7,11 @@ Aplicación para consultar la matriz de materias IPP con la lógica de limpieza 
 - Si una materia tiene varias filas, se muestran juntas sin mezclar su información.
 - Filtros aplicados sobre las filas originales.
 - Descarga de la matriz limpia y de la vista filtrada.
+- ABM de filas de materias en el navegador, con exportación CSV.
+
+## ABM
+
+La página `ABM` permite agregar, editar y eliminar filas de materias. En esta versión estática para Netlify, los cambios se guardan en el navegador de quien usa la app mediante almacenamiento local. Para compartir una base editada entre varias personas, exportá la matriz editada en CSV o conectá una base de datos.
 
 ## Versión para Netlify
 

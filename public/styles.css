@@ -265,6 +265,69 @@ h1 {
   margin: 18px 0;
 }
 
+.abm-form {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(3, 50, 61, 0.08);
+  margin: 18px 0;
+  padding: 18px;
+}
+
+.abm-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+}
+
+.abm-field {
+  display: grid;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.abm-field textarea {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--dark-gray);
+  font: inherit;
+  min-height: 96px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.abm-field.wide {
+  grid-column: span 2;
+}
+
+.danger {
+  border-color: #b3261e;
+  color: #b3261e;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.small-button {
+  border: 1px solid var(--deep-teal);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--deep-teal);
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+.small-button.delete {
+  border-color: #b3261e;
+  color: #b3261e;
+}
+
 .search {
   flex: 1 1 320px;
   margin: 0;
@@ -375,6 +438,14 @@ td {
   }
 
   .canvas-card.wide {
+    grid-column: auto;
+  }
+
+  .abm-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .abm-field.wide {
     grid-column: auto;
   }
 }

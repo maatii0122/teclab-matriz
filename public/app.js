@@ -1,5 +1,17 @@
 let payload = null;
 let currentRows = [];
+let workingRows = [];
+let editingId = null;
+
+const storageKey = "ipp-matriz-abm-v1";
+const longColumns = new Set([
+  "OBJETIVOS DE LA MATERIA",
+  "CONTENIDOS MÍNIMOS",
+  "BIBLIOGRAFÍA DE CONSULTA",
+  "PRODUCCIÓN DE CONTENIDOS",
+  "ENUNCIADOS",
+  "PRODUCCIÓN DE CONTENIDOS DE LA MATERIA",
+]);
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -62,6 +74,29 @@ function buildCleanMatrix(rows) {
   return [...rows].sort((a, b) => sortText(a.MATERIA).localeCompare(sortText(b.MATERIA)));
 }
 
+function rowId() {
+  return `row-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function withRowIds(rows) {
+  return rows.map((row) => ({ ...row, __id: row.__id || rowId() }));
+}
+
+function loadWorkingRows() {
+  const saved = localStorage.getItem(storageKey);
+  if (!saved) return withRowIds(payload.cleanRows);
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? withRowIds(parsed) : withRowIds(payload.cleanRows);
+  } catch {
+    return withRowIds(payload.cleanRows);
+  }
+}
+
+function saveWorkingRows() {
+  localStorage.setItem(storageKey, JSON.stringify(workingRows));
+}
+
 function buildMetrics(rows) {
   return payload.fields.map((field) => {
     const filled = rows.filter((row) => cleanValue(row[field])).length;
@@ -94,13 +129,13 @@ function renderMetrics(container, metrics) {
 }
 
 function renderStats() {
-  const stats = payload.stats;
+  const uniqueSubjects = new Set(workingRows.map((row) => cleanValue(row.MATERIA)).filter(Boolean)).size;
   $("#stats").innerHTML = [
-    ["Filas originales", stats.rawRows],
-    ["Materias únicas", stats.uniqueSubjects],
-    ["Filas matriz limpia", stats.cleanRows],
-    ["Carreras", stats.careers],
-    ["Períodos", stats.periods],
+    ["Filas originales", payload.stats.rawRows],
+    ["Filas actuales", workingRows.length],
+    ["Materias únicas", uniqueSubjects],
+    ["Carreras", uniqueValues(workingRows.map((row) => row.CARRERAS), true).length],
+    ["Períodos", uniqueValues(workingRows.flatMap((row) => periodValues(row.PERIODO)), false).length],
   ]
     .map(
       ([label, value]) => `
@@ -183,7 +218,7 @@ function applyFilters() {
   const periods = selectedValues($("#periodFilter"));
   const query = cleanValue($("#searchInput").value).toLowerCase();
 
-  const filteredRaw = payload.rawRows.filter(
+  const filteredRaw = workingRows.filter(
     (row) =>
       matchesAny(row.CARRERAS, careers) &&
       matchesAny(row.AÑO, years) &&
@@ -216,6 +251,108 @@ function downloadCsv(rows, filename) {
   URL.revokeObjectURL(url);
 }
 
+function refreshFilterOptions() {
+  const selected = {
+    careers: selectedValues($("#careerFilter")),
+    years: selectedValues($("#yearFilter")),
+    periods: selectedValues($("#periodFilter")),
+  };
+
+  fillSelect("#careerFilter", uniqueValues(workingRows.map((row) => row.CARRERAS), true));
+  fillSelect("#yearFilter", uniqueValues(workingRows.map((row) => row.AÑO), true));
+  fillSelect("#periodFilter", uniqueValues(workingRows.flatMap((row) => periodValues(row.PERIODO)), false));
+
+  restoreSelection("#careerFilter", selected.careers);
+  restoreSelection("#yearFilter", selected.years);
+  restoreSelection("#periodFilter", selected.periods);
+}
+
+function restoreSelection(id, values) {
+  const selected = new Set(values);
+  [...$(id).options].forEach((option) => {
+    option.selected = selected.has(option.value);
+  });
+}
+
+function renderAbmForm() {
+  $("#abmFields").innerHTML = payload.columns
+    .map((column) => {
+      const wide = longColumns.has(column) ? " wide" : "";
+      const field = longColumns.has(column)
+        ? `<textarea data-column="${escapeHtml(column)}"></textarea>`
+        : `<input data-column="${escapeHtml(column)}" type="text" />`;
+      return `
+        <label class="abm-field${wide}">
+          ${escapeHtml(column)}
+          ${field}
+        </label>
+      `;
+    })
+    .join("");
+}
+
+function formRow() {
+  const row = {};
+  payload.columns.forEach((column) => {
+    row[column] = cleanValue($(`[data-column="${cssEscape(column)}"]`).value);
+  });
+  return row;
+}
+
+function fillForm(row) {
+  payload.columns.forEach((column) => {
+    $(`[data-column="${cssEscape(column)}"]`).value = cleanValue(row?.[column]);
+  });
+}
+
+function clearForm() {
+  editingId = null;
+  fillForm(null);
+  $("#saveRow").textContent = "Guardar fila";
+}
+
+function renderAbmTable() {
+  const query = cleanValue($("#abmSearch").value).toLowerCase();
+  const rows = buildCleanMatrix(workingRows).filter((row) => {
+    if (!query) return true;
+    return cleanValue(row.MATERIA).toLowerCase().includes(query);
+  });
+  const columns = ["MATERIA", "PERIODO", "CARRERAS", "AÑO", "CAMPO DE FORMACIÓN"];
+  const head = `<thead><tr>${columns.map((column) => `<th>${column}</th>`).join("")}<th>Acciones</th></tr></thead>`;
+  const body = rows
+    .map(
+      (row) => `
+        <tr>
+          ${columns.map((column) => `<td>${escapeHtml(row[column])}</td>`).join("")}
+          <td>
+            <div class="row-actions">
+              <button class="small-button" data-edit="${row.__id}">Editar</button>
+              <button class="small-button delete" data-delete="${row.__id}">Eliminar</button>
+            </div>
+          </td>
+        </tr>
+      `,
+    )
+    .join("");
+  $("#abmTable").innerHTML = `${head}<tbody>${body}</tbody>`;
+}
+
+function refreshViews() {
+  saveWorkingRows();
+  refreshFilterOptions();
+  applyFilters();
+  renderMetrics($("#metrics"), buildMetrics(workingRows));
+  renderStats();
+  renderAuditTable(buildMetrics(workingRows));
+  renderTable($("#cleanTable"), buildCleanMatrix(workingRows), payload.columns, true);
+  renderAbmTable();
+}
+
+function cssEscape(value) {
+  if (window.CSS?.escape) return CSS.escape(value);
+  return String(value).replace(/"/g, '\\"');
+}
+
 function csvCell(value) {
   const text = cleanValue(value).replace(/"/g, '""');
   return `"${text}"`;
@@ -244,15 +381,16 @@ function setupNavigation() {
 async function init() {
   const response = await fetch("./data/matriz.json");
   payload = await response.json();
+  workingRows = loadWorkingRows();
 
-  fillSelect("#careerFilter", uniqueValues(payload.rawRows.map((row) => row.CARRERAS), true));
-  fillSelect("#yearFilter", uniqueValues(payload.rawRows.map((row) => row.AÑO), true));
-  fillSelect("#periodFilter", uniqueValues(payload.rawRows.flatMap((row) => periodValues(row.PERIODO)), false));
+  refreshFilterOptions();
 
   renderStats();
-  renderMetrics($("#metrics"), payload.metrics);
-  renderAuditTable(payload.metrics);
-  renderTable($("#cleanTable"), payload.cleanRows, payload.columns, true);
+  renderMetrics($("#metrics"), buildMetrics(workingRows));
+  renderAuditTable(buildMetrics(workingRows));
+  renderTable($("#cleanTable"), buildCleanMatrix(workingRows), payload.columns, true);
+  renderAbmForm();
+  renderAbmTable();
   setupNavigation();
   applyFilters();
 
@@ -267,7 +405,49 @@ async function init() {
     applyFilters();
   });
   $("#downloadFiltered").addEventListener("click", () => downloadCsv(currentRows, "matriz-ipp-filtrada.csv"));
-  $("#downloadClean").addEventListener("click", () => downloadCsv(payload.cleanRows, "matriz-limpia.csv"));
+  $("#downloadClean").addEventListener("click", () => downloadCsv(buildCleanMatrix(workingRows), "matriz-limpia.csv"));
+  $("#downloadAbm").addEventListener("click", () => downloadCsv(buildCleanMatrix(workingRows), "matriz-editada.csv"));
+  $("#abmSearch").addEventListener("input", renderAbmTable);
+  $("#cancelEdit").addEventListener("click", clearForm);
+  $("#resetRows").addEventListener("click", () => {
+    if (!confirm("¿Restaurar la base original? Se perderán los cambios guardados en este navegador.")) return;
+    localStorage.removeItem(storageKey);
+    workingRows = withRowIds(payload.cleanRows);
+    clearForm();
+    refreshViews();
+  });
+  $("#abmForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const row = formRow();
+    if (!cleanValue(row.MATERIA)) {
+      alert("El campo MATERIA es obligatorio.");
+      return;
+    }
+    if (editingId) {
+      workingRows = workingRows.map((item) => (item.__id === editingId ? { ...row, __id: editingId } : item));
+    } else {
+      workingRows = [...workingRows, { ...row, __id: rowId() }];
+    }
+    clearForm();
+    refreshViews();
+  });
+  $("#abmTable").addEventListener("click", (event) => {
+    const editId = event.target.dataset.edit;
+    const deleteId = event.target.dataset.delete;
+    if (editId) {
+      const row = workingRows.find((item) => item.__id === editId);
+      editingId = editId;
+      fillForm(row);
+      $("#saveRow").textContent = "Guardar cambios";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    if (deleteId) {
+      if (!confirm("¿Eliminar esta fila de materia?")) return;
+      workingRows = workingRows.filter((item) => item.__id !== deleteId);
+      if (editingId === deleteId) clearForm();
+      refreshViews();
+    }
+  });
 }
 
 init();
