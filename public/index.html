@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Matriz general IPP</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">TECLAB</div>
+      <nav class="nav" aria-label="Páginas">
+        <button class="nav-button active" data-page="matrix">Matriz</button>
+        <button class="nav-button" data-page="info">Info</button>
+      </nav>
+
+      <section class="filters" id="filters">
+        <h2>Filtros rápidos</h2>
+        <label>
+          Carrera
+          <select id="careerFilter" multiple></select>
+        </label>
+        <label>
+          Año
+          <select id="yearFilter" multiple></select>
+        </label>
+        <label>
+          Periodo
+          <select id="periodFilter" multiple></select>
+        </label>
+        <button id="clearFilters" class="ghost-button">Limpiar filtros</button>
+      </section>
+    </aside>
+
+    <main class="app">
+      <header class="page-header">
+        <h1>Matriz general IPP</h1>
+        <p>
+          Explorá la matriz consolidada por materia. Si una materia aparece en varias carreras,
+          años o períodos, se muestra una vez con sus valores combinados.
+        </p>
+      </header>
+
+      <section id="matrixPage" class="page active">
+        <h2>Cobertura de campos clave</h2>
+        <div id="metrics" class="metrics-grid"></div>
+
+        <div class="toolbar">
+          <label class="search">
+            Buscar materia
+            <input id="searchInput" type="search" placeholder="Nombre, carrera, código..." />
+          </label>
+          <button id="downloadFiltered" class="primary-button">Descargar filtrada CSV</button>
+        </div>
+
+        <div id="resultSummary" class="panel"></div>
+        <div class="table-wrap">
+          <table id="matrixTable"></table>
+        </div>
+      </section>
+
+      <section id="infoPage" class="page">
+        <h2>Info</h2>
+        <div id="stats" class="metrics-grid"></div>
+
+        <article class="panel">
+          <h3>Lógica de limpieza</h3>
+          <p>
+            La matriz limpia agrupa todas las filas por materia. Los filtros se aplican primero
+            sobre las relaciones originales y después se vuelve a consolidar la tabla, para que
+            carrera y período no generen materias repetidas.
+          </p>
+        </article>
+
+        <h2>Campos auditados</h2>
+        <div class="table-wrap compact">
+          <table id="auditTable"></table>
+        </div>
+
+        <div class="toolbar">
+          <a class="primary-button link-button" href="./Matriz%20limpia.xlsx" download>Descargar Matriz limpia.xlsx</a>
+          <button id="downloadClean" class="ghost-button">Descargar limpia CSV</button>
+        </div>
+
+        <h2>Matriz limpia</h2>
+        <div class="table-wrap">
+          <table id="cleanTable"></table>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
