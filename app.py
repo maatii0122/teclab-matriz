@@ -11,12 +11,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-TECLAB_COLORS = {
-    "deep_teal": "#03323d",
-    "teal": "#00b7c2",
-    "magenta": "#d70f64",
+IPP_COLORS = {
+    "deep_teal": "#101b2b",
+    "teal": "#2bb8c8",
+    "accent": "#2bb8c8",
     "soft_gray": "#f2f6f9",
-    "dark_gray": "#2d2d2d",
+    "dark_gray": "#1f2a38",
     "white": "#ffffff",
     "border": "#d9e7ec",
 }
@@ -25,71 +25,71 @@ st.markdown(
     f"""
     <style>
     .stApp {{
-        background: linear-gradient(180deg, #ffffff 0%, {TECLAB_COLORS['soft_gray']} 100%);
-        color: {TECLAB_COLORS['dark_gray']};
+        background: linear-gradient(180deg, #ffffff 0%, {IPP_COLORS['soft_gray']} 100%);
+        color: {IPP_COLORS['dark_gray']};
     }}
     h1, h2, h3 {{
-        color: {TECLAB_COLORS['deep_teal']};
+        color: {IPP_COLORS['deep_teal']};
     }}
     h1 {{
-        border-left: 8px solid {TECLAB_COLORS['magenta']};
+        border-left: 8px solid {IPP_COLORS['accent']};
         padding-left: 16px;
     }}
     section[data-testid="stSidebar"] {{
-        background: {TECLAB_COLORS['deep_teal']};
+        background: {IPP_COLORS['deep_teal']};
     }}
     section[data-testid="stSidebar"] * {{
-        color: {TECLAB_COLORS['white']} !important;
+        color: {IPP_COLORS['white']} !important;
     }}
     section[data-testid="stSidebar"] [data-baseweb="select"] div {{
-        color: {TECLAB_COLORS['dark_gray']} !important;
+        color: {IPP_COLORS['dark_gray']} !important;
     }}
     section[data-testid="stSidebar"] [data-baseweb="tag"] {{
-        background: {TECLAB_COLORS['teal']} !important;
+        background: {IPP_COLORS['teal']} !important;
     }}
     section[data-testid="stSidebar"] [data-baseweb="radio"] div[aria-checked="true"] {{
-        border-color: {TECLAB_COLORS['magenta']} !important;
+        border-color: {IPP_COLORS['accent']} !important;
     }}
     div[data-testid="stMetric"] {{
-        background: {TECLAB_COLORS['white']};
-        border: 1px solid {TECLAB_COLORS['border']};
-        border-left: 6px solid {TECLAB_COLORS['teal']};
+        background: {IPP_COLORS['white']};
+        border: 1px solid {IPP_COLORS['border']};
+        border-left: 6px solid {IPP_COLORS['teal']};
         border-radius: 8px;
         padding: 14px 16px;
         box-shadow: 0 8px 20px rgba(3, 50, 61, 0.08);
     }}
     div[data-testid="stMetric"] label {{
-        color: {TECLAB_COLORS['deep_teal']} !important;
+        color: {IPP_COLORS['deep_teal']} !important;
         font-weight: 700;
     }}
     div[data-testid="stMetricValue"] {{
-        color: {TECLAB_COLORS['magenta']};
+        color: {IPP_COLORS['accent']};
     }}
-    .teclab-panel {{
-        background: {TECLAB_COLORS['white']};
-        border: 1px solid {TECLAB_COLORS['border']};
-        border-left: 6px solid {TECLAB_COLORS['magenta']};
+    .ipp-panel {{
+        background: {IPP_COLORS['white']};
+        border: 1px solid {IPP_COLORS['border']};
+        border-left: 6px solid {IPP_COLORS['accent']};
         border-radius: 8px;
         padding: 14px 16px;
         box-shadow: 0 8px 20px rgba(3, 50, 61, 0.08);
     }}
-    .teclab-panel strong {{
-        color: {TECLAB_COLORS['magenta']};
+    .ipp-panel strong {{
+        color: {IPP_COLORS['accent']};
     }}
     .stButton > button, .stDownloadButton > button {{
-        background: {TECLAB_COLORS['magenta']};
-        border: 1px solid {TECLAB_COLORS['magenta']};
-        color: {TECLAB_COLORS['white']};
+        background: {IPP_COLORS['accent']};
+        border: 1px solid {IPP_COLORS['accent']};
+        color: {IPP_COLORS['white']};
         border-radius: 8px;
         font-weight: 700;
     }}
     .stButton > button:hover, .stDownloadButton > button:hover {{
-        background: {TECLAB_COLORS['deep_teal']};
-        border-color: {TECLAB_COLORS['deep_teal']};
-        color: {TECLAB_COLORS['white']};
+        background: {IPP_COLORS['deep_teal']};
+        border-color: {IPP_COLORS['deep_teal']};
+        color: {IPP_COLORS['white']};
     }}
     [data-testid="stDataFrame"] {{
-        border: 1px solid {TECLAB_COLORS['border']};
+        border: 1px solid {IPP_COLORS['border']};
         border-radius: 8px;
         overflow: hidden;
         box-shadow: 0 8px 20px rgba(3, 50, 61, 0.06);
@@ -230,7 +230,7 @@ except FileNotFoundError:
 st.title("Matriz general IPP")
 st.markdown(
     """
-    <p style='color:#555;'>Esta versión interactiva replica la paleta Teclab y permite explorar la matriz por carrera, año y campo de formación.
+    <p style='color:#555;'>Esta versión interactiva replica la paleta IPP y permite explorar la matriz por carrera, año y campo de formación.
     La matriz limpia conserva las filas originales y solo las ordena por materia, sin combinar información entre registros.</p>
     """,
     unsafe_allow_html=True,
@@ -277,7 +277,7 @@ if page == "Matriz":
 
     st.subheader("Matriz filtrada")
     st.markdown(
-        "<div class='teclab-panel'>"
+        "<div class='ipp-panel'>"
         f"<strong>{len(matrix_view):,}</strong> filas cumplen con los filtros seleccionados "
         f"({unique_subjects:,} materias, sin mezclar información entre filas).</div>",
         unsafe_allow_html=True,
@@ -303,7 +303,7 @@ else:
     st.markdown("### Lógica de limpieza")
     st.markdown(
         """
-        <div class='teclab-panel'>
+        <div class='ipp-panel'>
         La matriz limpia no mezcla filas. Mantiene cada registro original de la matriz general completa y
         solamente ordena por `MATERIA`. Si una materia tiene 1, 2, 3 o más filas, esas filas se muestran juntas
         para conservar su carrera, período, año, campo y demás información exactamente en su propia fila.

@@ -1,9 +1,10 @@
 :root {
-  --deep-teal: #03323d;
-  --teal: #00b7c2;
-  --magenta: #d70f64;
+  --deep-teal: #101b2b;
+  --teal: #2bb8c8;
+  --cyan-soft: #78d8e3;
+  --accent: #2bb8c8;
   --soft-gray: #f2f6f9;
-  --dark-gray: #2d2d2d;
+  --dark-gray: #1f2a38;
   --border: #d9e7ec;
   --white: #ffffff;
 }
@@ -30,17 +31,55 @@ select {
   inset: 0 auto 0 0;
   width: 290px;
   overflow-y: auto;
-  background: var(--deep-teal);
+  background:
+    radial-gradient(circle at 0 0, rgba(43, 184, 200, 0.16), transparent 34%),
+    var(--deep-teal);
   color: var(--white);
   padding: 24px 18px;
 }
 
 .brand {
-  border-left: 6px solid var(--magenta);
-  font-size: 1.6rem;
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  font-size: 1.85rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  padding-left: 12px;
+  letter-spacing: 0.02em;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-mark {
+  align-items: center;
+  background: var(--white);
+  border-radius: 7px;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  position: relative;
+  width: 28px;
+}
+
+.brand-mark::before {
+  border-bottom: 6px solid transparent;
+  border-left: 9px solid var(--deep-teal);
+  border-top: 6px solid transparent;
+  content: "";
+  margin-left: 2px;
+}
+
+.brand::after {
+  border-bottom: 2px solid var(--teal);
+  border-right: 2px solid var(--teal);
+  border-bottom-right-radius: 28px;
+  content: "";
+  height: 58px;
+  left: 0;
+  opacity: 0.9;
+  position: absolute;
+  top: 0;
+  width: 124px;
+  z-index: -1;
 }
 
 .nav {
@@ -67,7 +106,8 @@ select {
 }
 
 .nav-button.active {
-  background: var(--magenta);
+  background: var(--accent);
+  color: var(--deep-teal);
 }
 
 .filters h2 {
@@ -117,7 +157,7 @@ h3 {
 }
 
 h1 {
-  border-left: 8px solid var(--magenta);
+  border-left: 8px solid var(--accent);
   font-size: clamp(2rem, 4vw, 3.4rem);
   line-height: 1.05;
   margin: 0 0 12px;
@@ -150,7 +190,7 @@ h1 {
 }
 
 .panel {
-  border-left-color: var(--magenta);
+  border-left-color: var(--accent);
   margin: 16px 0;
 }
 
@@ -171,7 +211,7 @@ h1 {
 }
 
 .canvas-header {
-  border-left: 8px solid var(--magenta);
+  border-left: 8px solid var(--accent);
   grid-column: 1 / -1;
 }
 
@@ -185,12 +225,12 @@ h1 {
 }
 
 .canvas-card.wide {
-  border-top-color: var(--magenta);
+  border-top-color: var(--accent);
   grid-column: span 2;
 }
 
 .eyebrow {
-  color: var(--magenta);
+  color: var(--accent);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -206,7 +246,7 @@ h1 {
 }
 
 .metric strong {
-  color: var(--magenta);
+  color: var(--accent);
   display: block;
   font-size: 1.7rem;
   margin: 4px 0;
@@ -233,8 +273,8 @@ h1 {
 .primary-button,
 .link-button {
   align-items: center;
-  background: var(--magenta);
-  border-color: var(--magenta);
+  background: var(--deep-teal);
+  border-color: var(--deep-teal);
   color: var(--white);
   display: inline-flex;
   justify-content: center;
@@ -257,9 +297,9 @@ h1 {
 .primary-button:hover,
 .ghost-button:hover,
 .link-button:hover {
-  background: var(--deep-teal);
-  border-color: var(--deep-teal);
-  color: var(--white);
+  background: var(--teal);
+  border-color: var(--teal);
+  color: var(--deep-teal);
 }
 
 .table-wrap {
