@@ -103,34 +103,6 @@ def load_data(path: str) -> pd.DataFrame:
     df = pd.read_excel(path, engine="openpyxl")
     return df
 
-MULTI_VALUE_COLUMNS = {
-    "CÓDIGO",
-    "PERIODO",
-    "CAMPO DE FORMACIÓN",
-    "PRODUCCIÓN DE CONTENIDOS",
-    "CARRERAS",
-    "AÑO",
-    "ENUNCIADOS",
-    "PRODUCCIÓN DE CONTENIDOS DE LA MATERIA",
-    "IMPLEMENTACIÓN REDISEÑO",
-    "TIPO DE REDISEÑO",
-    "ACTUALIZACIÓN",
-    "PERIODO DE IMPACTO",
-}
-
-SPLIT_VALUE_COLUMNS = {
-    "CÓDIGO",
-    "PERIODO",
-    "CAMPO DE FORMACIÓN",
-    "CARRERAS",
-    "AÑO",
-    "IMPLEMENTACIÓN REDISEÑO",
-    "TIPO DE REDISEÑO",
-    "ACTUALIZACIÓN",
-    "PERIODO DE IMPACTO",
-}
-
-
 def clean_value(value) -> str | None:
     if pd.isna(value):
         return None
@@ -157,19 +129,6 @@ def unique_values(values, split: bool = False) -> list[str]:
     return result
 
 
-def join_unique(values, split: bool = False) -> str | None:
-    items = unique_values(values, split=split)
-    return ", ".join(items) if items else None
-
-
-def first_non_empty(values) -> str | None:
-    for value in values:
-        text = clean_value(value)
-        if text:
-            return text
-    return None
-
-
 def filter_options(data: pd.DataFrame, column: str) -> list[str]:
     return sorted(unique_values(data[column], split=True))
 
@@ -184,25 +143,11 @@ def sort_text(value) -> str:
     return "".join(char for char in text if not unicodedata.combining(char)).upper()
 
 
-def build_subject_view(data: pd.DataFrame) -> pd.DataFrame:
+def build_clean_matrix(data: pd.DataFrame) -> pd.DataFrame:
     if data.empty:
         return data.copy()
 
-    grouped = data.groupby("MATERIA", dropna=False, sort=False)
-    rows = []
-    for _, group in grouped:
-        row = {}
-        for column in data.columns:
-            if column == "MATERIA":
-                row[column] = first_non_empty(group[column])
-            elif column in MULTI_VALUE_COLUMNS:
-                row[column] = join_unique(group[column], split=column in SPLIT_VALUE_COLUMNS)
-            else:
-                row[column] = first_non_empty(group[column])
-        rows.append(row)
-
-    subject_view = pd.DataFrame(rows, columns=data.columns)
-    return subject_view.sort_values("MATERIA", key=lambda values: values.map(sort_text), kind="mergesort")
+    return data.sort_values("MATERIA", key=lambda values: values.map(sort_text), kind="mergesort")
 
 
 def build_metrics(data: pd.DataFrame) -> list[tuple[str, int, int, str]]:
@@ -245,7 +190,7 @@ st.title("Matriz general IPP")
 st.markdown(
     """
     <p style='color:#555;'>Esta versión interactiva replica la paleta Teclab y permite explorar la matriz por carrera, año y campo de formación.
-    El dashboard en la parte inferior muestra qué campos ya están documentados y qué falta completar.</p>
+    La matriz limpia conserva las filas originales y solo las ordena por materia, sin combinar información entre registros.</p>
     """,
     unsafe_allow_html=True,
 )
@@ -262,8 +207,8 @@ FIELDS = [
     "AÑO",
 ]
 
-global_subjects = build_subject_view(df)
-metrics = build_metrics(global_subjects)
+clean_matrix = build_clean_matrix(df)
+metrics = build_metrics(clean_matrix)
 page = st.sidebar.radio("Página", ["Matriz", "Info"])
 
 if page == "Matriz":
@@ -286,20 +231,21 @@ if page == "Matriz":
     if periodo_filter:
         filtered = filtered[filtered["PERIODO"].apply(lambda value: matches_any(value, periodo_filter))]
 
-    subject_view = build_subject_view(filtered)
+    matrix_view = build_clean_matrix(filtered)
+    unique_subjects = matrix_view["MATERIA"].nunique(dropna=True)
 
     st.subheader("Matriz filtrada")
     st.markdown(
         "<div class='teclab-panel'>"
-        f"<strong>{len(subject_view):,}</strong> materias cumplen con los filtros seleccionados "
-        f"({len(filtered):,} relaciones carrera/período encontradas).</div>",
+        f"<strong>{len(matrix_view):,}</strong> filas cumplen con los filtros seleccionados "
+        f"({unique_subjects:,} materias, sin mezclar información entre filas).</div>",
         unsafe_allow_html=True,
     )
-    st.dataframe(subject_view, width="stretch")
+    st.dataframe(matrix_view, width="stretch")
 
     st.download_button(
         label="Descargar matriz filtrada",
-        data=to_excel(subject_view),
+        data=to_excel(matrix_view),
         file_name="matriz-ipp-filtrada.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
@@ -309,7 +255,7 @@ else:
 
     info_cols = st.columns(4)
     info_cols[0].metric("Filas originales", f"{len(df):,}")
-    info_cols[1].metric("Materias únicas", f"{len(global_subjects):,}")
+    info_cols[1].metric("Materias únicas", f"{df['MATERIA'].nunique(dropna=True):,}")
     info_cols[2].metric("Carreras", f"{len(filter_options(df, 'CARRERAS')):,}")
     info_cols[3].metric("Períodos", f"{len(filter_options(df, 'PERIODO')):,}")
 
@@ -317,9 +263,9 @@ else:
     st.markdown(
         """
         <div class='teclab-panel'>
-        La matriz limpia agrupa todas las filas por `MATERIA`. Cuando una materia aparece en varias carreras,
-        años o períodos, esos valores se combinan en la misma fila sin repetir la materia. En la página `Matriz`,
-        los filtros se aplican primero sobre las relaciones originales y después se vuelve a consolidar la vista.
+        La matriz limpia no mezcla filas. Mantiene cada registro original de la matriz general completa y
+        solamente ordena por `MATERIA`. Si una materia tiene 1, 2, 3 o más filas, esas filas se muestran juntas
+        para conservar su carrera, período, año, campo y demás información exactamente en su propia fila.
         </div>
         """,
         unsafe_allow_html=True,
@@ -337,10 +283,10 @@ else:
     st.bar_chart(data=dashboard.set_index("Campo"))
 
     st.markdown("### Matriz limpia")
-    st.dataframe(global_subjects, width="stretch")
+    st.dataframe(clean_matrix, width="stretch")
     st.download_button(
         label="Descargar matriz limpia",
-        data=to_excel(global_subjects),
+        data=to_excel(clean_matrix),
         file_name="matriz-limpia.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )

@@ -2,9 +2,10 @@
 
 Aplicación para consultar la matriz de materias IPP con la lógica de limpieza pedida:
 
-- Una fila por materia.
-- Carreras, años y períodos combinados en columnas únicas.
-- Filtros aplicados sobre las relaciones originales y consolidación posterior.
+- Filas originales conservadas.
+- Materias ordenadas alfabéticamente.
+- Si una materia tiene varias filas, se muestran juntas sin mezclar su información.
+- Filtros aplicados sobre las filas originales.
 - Descarga de la matriz limpia y de la vista filtrada.
 
 ## Versión para Netlify

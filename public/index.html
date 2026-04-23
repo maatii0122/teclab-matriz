@@ -36,8 +36,8 @@
       <header class="page-header">
         <h1>Matriz general IPP</h1>
         <p>
-          Explorá la matriz consolidada por materia. Si una materia aparece en varias carreras,
-          años o períodos, se muestra una vez con sus valores combinados.
+          Explorá la matriz ordenada por materia. Si una materia aparece en varias carreras,
+          años o períodos, se muestran sus filas originales juntas sin mezclar la información.
         </p>
       </header>
 
@@ -66,9 +66,9 @@
         <article class="panel">
           <h3>Lógica de limpieza</h3>
           <p>
-            La matriz limpia agrupa todas las filas por materia. Los filtros se aplican primero
-            sobre las relaciones originales y después se vuelve a consolidar la tabla, para que
-            carrera y período no generen materias repetidas.
+            La matriz limpia mantiene cada fila original y solo ordena por materia. Si una
+            materia tiene varias filas, quedan una debajo de la otra para conservar su carrera,
+            período, año, campo y demás información en la fila que corresponde.
           </p>
         </article>
 

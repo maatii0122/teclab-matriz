@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
-import shutil
 import unicodedata
 from pathlib import Path
 
 import pandas as pd
+from openpyxl import load_workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,34 +27,6 @@ FIELDS = [
     "CARRERAS",
     "AÑO",
 ]
-
-MULTI_VALUE_COLUMNS = {
-    "CÓDIGO",
-    "PERIODO",
-    "CAMPO DE FORMACIÓN",
-    "PRODUCCIÓN DE CONTENIDOS",
-    "CARRERAS",
-    "AÑO",
-    "ENUNCIADOS",
-    "PRODUCCIÓN DE CONTENIDOS DE LA MATERIA",
-    "IMPLEMENTACIÓN REDISEÑO",
-    "TIPO DE REDISEÑO",
-    "ACTUALIZACIÓN",
-    "PERIODO DE IMPACTO",
-}
-
-SPLIT_VALUE_COLUMNS = {
-    "CÓDIGO",
-    "PERIODO",
-    "CAMPO DE FORMACIÓN",
-    "CARRERAS",
-    "AÑO",
-    "IMPLEMENTACIÓN REDISEÑO",
-    "TIPO DE REDISEÑO",
-    "ACTUALIZACIÓN",
-    "PERIODO DE IMPACTO",
-}
-
 
 def clean_value(value) -> str | None:
     if pd.isna(value):
@@ -80,40 +54,14 @@ def unique_values(values, split: bool = False) -> list[str]:
     return result
 
 
-def join_unique(values, split: bool = False) -> str | None:
-    items = unique_values(values, split=split)
-    return ", ".join(items) if items else None
-
-
-def first_non_empty(values) -> str | None:
-    for value in values:
-        text = clean_value(value)
-        if text:
-            return text
-    return None
-
-
 def sort_text(value) -> str:
     text = clean_value(value) or ""
     text = unicodedata.normalize("NFKD", text)
     return "".join(char for char in text if not unicodedata.combining(char)).upper()
 
 
-def build_subject_view(data: pd.DataFrame) -> pd.DataFrame:
-    rows = []
-    for _, group in data.groupby("MATERIA", dropna=False, sort=False):
-        row = {}
-        for column in data.columns:
-            if column == "MATERIA":
-                row[column] = first_non_empty(group[column])
-            elif column in MULTI_VALUE_COLUMNS:
-                row[column] = join_unique(group[column], split=column in SPLIT_VALUE_COLUMNS)
-            else:
-                row[column] = first_non_empty(group[column])
-        rows.append(row)
-
-    subject_view = pd.DataFrame(rows, columns=data.columns)
-    return subject_view.sort_values("MATERIA", key=lambda values: values.map(sort_text), kind="mergesort")
+def build_clean_matrix(data: pd.DataFrame) -> pd.DataFrame:
+    return data.sort_values("MATERIA", key=lambda values: values.map(sort_text), kind="mergesort")
 
 
 def records(data: pd.DataFrame) -> list[dict[str, str]]:
@@ -132,9 +80,56 @@ def metrics(data: pd.DataFrame) -> list[dict[str, str | int]]:
     return result
 
 
+def write_formatted_excel(data: pd.DataFrame, path: Path) -> None:
+    wrap_columns = {
+        "OBJETIVOS DE LA MATERIA",
+        "CONTENIDOS MÍNIMOS",
+        "BIBLIOGRAFÍA DE CONSULTA",
+        "PRODUCCIÓN DE CONTENIDOS",
+        "ENUNCIADOS",
+        "PRODUCCIÓN DE CONTENIDOS DE LA MATERIA",
+    }
+
+    data.to_excel(path, index=False, sheet_name="Matriz limpia")
+    wb = load_workbook(path)
+    ws = wb["Matriz limpia"]
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+
+    header_fill = PatternFill("solid", fgColor="03323D")
+    header_font = Font(color="FFFFFF", bold=True)
+    thin_gray = Side(style="thin", color="D9E2E8")
+
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = Border(bottom=thin_gray)
+
+    for column_idx, column_name in enumerate(data.columns, start=1):
+        letter = get_column_letter(column_idx)
+        sample_values = [str(column_name)] + [str(value) for value in data[column_name].dropna().head(100)]
+        max_length = max(len(value) for value in sample_values) if sample_values else len(str(column_name))
+        width = min(max(max_length + 2, 12), 55)
+        if column_name in wrap_columns:
+            width = min(max(width, 30), 55)
+        ws.column_dimensions[letter].width = width
+
+    wrap_letters = {
+        get_column_letter(idx)
+        for idx, name in enumerate(data.columns, start=1)
+        if name in wrap_columns
+    }
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
+            cell.alignment = Alignment(vertical="top", wrap_text=cell.column_letter in wrap_letters)
+
+    wb.save(path)
+
+
 def main() -> None:
     raw = pd.read_excel(SOURCE, engine="openpyxl")
-    clean = build_subject_view(raw)
+    clean = build_clean_matrix(raw)
 
     PUBLIC_DATA.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -146,19 +141,21 @@ def main() -> None:
         "stats": {
             "rawRows": len(raw),
             "cleanRows": len(clean),
+            "uniqueSubjects": int(raw["MATERIA"].nunique(dropna=True)),
             "careers": len(unique_values(raw["CARRERAS"], split=True)),
             "periods": len(unique_values(raw["PERIODO"], split=True)),
         },
     }
 
     PUBLIC_DATA.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-    clean.to_excel(CLEAN_XLSX, index=False)
-    shutil.copyfile(CLEAN_XLSX, PUBLIC_XLSX)
+    write_formatted_excel(clean, CLEAN_XLSX)
+    write_formatted_excel(clean, PUBLIC_XLSX)
 
     print(f"Wrote {PUBLIC_DATA.relative_to(ROOT)}")
     print(f"Wrote {CLEAN_XLSX.name}")
     print(f"Wrote {PUBLIC_XLSX.relative_to(ROOT)}")
-    print(f"Rows: {len(raw)} raw -> {len(clean)} clean")
+    print(f"Rows: {len(raw)} raw -> {len(clean)} clean sorted rows")
+    print(f"Unique subjects: {raw['MATERIA'].nunique(dropna=True)}")
 
 
 if __name__ == "__main__":

@@ -1,30 +1,3 @@
-const multiValueColumns = new Set([
-  "CÓDIGO",
-  "PERIODO",
-  "CAMPO DE FORMACIÓN",
-  "PRODUCCIÓN DE CONTENIDOS",
-  "CARRERAS",
-  "AÑO",
-  "ENUNCIADOS",
-  "PRODUCCIÓN DE CONTENIDOS DE LA MATERIA",
-  "IMPLEMENTACIÓN REDISEÑO",
-  "TIPO DE REDISEÑO",
-  "ACTUALIZACIÓN",
-  "PERIODO DE IMPACTO",
-]);
-
-const splitValueColumns = new Set([
-  "CÓDIGO",
-  "PERIODO",
-  "CAMPO DE FORMACIÓN",
-  "CARRERAS",
-  "AÑO",
-  "IMPLEMENTACIÓN REDISEÑO",
-  "TIPO DE REDISEÑO",
-  "ACTUALIZACIÓN",
-  "PERIODO DE IMPACTO",
-]);
-
 let payload = null;
 let currentRows = [];
 
@@ -70,38 +43,8 @@ function matchesAny(value, selected) {
   return selected.some((item) => values.has(item));
 }
 
-function firstNonEmpty(values) {
-  return values.map(cleanValue).find(Boolean) || "";
-}
-
-function joinUnique(values, split = false) {
-  return uniqueValues(values, split).join(", ");
-}
-
-function buildSubjectView(rows) {
-  const groups = new Map();
-  rows.forEach((row) => {
-    const key = cleanValue(row.MATERIA);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
-  });
-
-  return [...groups.values()]
-    .map((group) => {
-      const output = {};
-      payload.columns.forEach((column) => {
-        const values = group.map((row) => row[column]);
-        if (column === "MATERIA") {
-          output[column] = firstNonEmpty(values);
-        } else if (multiValueColumns.has(column)) {
-          output[column] = joinUnique(values, splitValueColumns.has(column));
-        } else {
-          output[column] = firstNonEmpty(values);
-        }
-      });
-      return output;
-    })
-    .sort((a, b) => sortText(a.MATERIA).localeCompare(sortText(b.MATERIA)));
+function buildCleanMatrix(rows) {
+  return [...rows].sort((a, b) => sortText(a.MATERIA).localeCompare(sortText(b.MATERIA)));
 }
 
 function buildMetrics(rows) {
@@ -139,7 +82,8 @@ function renderStats() {
   const stats = payload.stats;
   $("#stats").innerHTML = [
     ["Filas originales", stats.rawRows],
-    ["Materias únicas", stats.cleanRows],
+    ["Materias únicas", stats.uniqueSubjects],
+    ["Filas matriz limpia", stats.cleanRows],
     ["Carreras", stats.careers],
     ["Períodos", stats.periods],
   ]
@@ -197,7 +141,7 @@ function applyFilters() {
       matchesAny(row.PERIODO, periods),
   );
 
-  currentRows = buildSubjectView(filteredRaw).filter((row) => {
+  currentRows = buildCleanMatrix(filteredRaw).filter((row) => {
     if (!query) return true;
     return payload.columns.some((column) => cleanValue(row[column]).toLowerCase().includes(query));
   });
@@ -205,7 +149,8 @@ function applyFilters() {
   const metrics = buildMetrics(currentRows);
   renderMetrics($("#metrics"), metrics);
   renderTable($("#matrixTable"), currentRows, payload.columns);
-  $("#resultSummary").innerHTML = `<strong>${currentRows.length.toLocaleString("es-AR")}</strong> materias cumplen con los filtros seleccionados (${filteredRaw.length.toLocaleString("es-AR")} relaciones carrera/período encontradas).`;
+  const uniqueSubjects = new Set(currentRows.map((row) => cleanValue(row.MATERIA)).filter(Boolean)).size;
+  $("#resultSummary").innerHTML = `<strong>${currentRows.length.toLocaleString("es-AR")}</strong> filas cumplen con los filtros seleccionados (${uniqueSubjects.toLocaleString("es-AR")} materias, sin mezclar información entre filas).`;
 }
 
 function downloadCsv(rows, filename) {
