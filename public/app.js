@@ -113,23 +113,57 @@ function renderStats() {
     .join("");
 }
 
-function renderTable(table, rows, columns) {
+function renderTable(table, rows, columns, groupSubjects = false) {
   if (!rows.length) {
     table.innerHTML = `<tbody><tr><td>No hay resultados para los filtros seleccionados.</td></tr></tbody>`;
     return;
   }
 
   const head = `<thead><tr>${columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("")}</tr></thead>`;
+  const subjectSpans = groupSubjects ? getSubjectSpans(rows) : new Map();
   const body = rows
-    .map(
-      (row) => `
+    .map((row, rowIndex) => {
+      const cells = columns
+        .map((column) => {
+          if (groupSubjects && column === "MATERIA") {
+            const span = subjectSpans.get(rowIndex);
+            if (span === 0) return "";
+            return `<td class="subject-cell" rowspan="${span}">${escapeHtml(row[column])}</td>`;
+          }
+          return `<td>${escapeHtml(row[column])}</td>`;
+        })
+        .join("");
+
+      return `
         <tr>
-          ${columns.map((column) => `<td>${escapeHtml(row[column])}</td>`).join("")}
+          ${cells}
         </tr>
-      `,
-    )
+      `;
+    })
     .join("");
   table.innerHTML = `${head}<tbody>${body}</tbody>`;
+}
+
+function getSubjectSpans(rows) {
+  const spans = new Map();
+  let start = 0;
+  let current = cleanValue(rows[0]?.MATERIA);
+
+  for (let index = 1; index <= rows.length; index += 1) {
+    const next = index < rows.length ? cleanValue(rows[index].MATERIA) : null;
+    if (next === current) continue;
+
+    const span = index - start;
+    spans.set(start, span);
+    for (let inner = start + 1; inner < index; inner += 1) {
+      spans.set(inner, 0);
+    }
+
+    start = index;
+    current = next;
+  }
+
+  return spans;
 }
 
 function renderAuditTable(metrics) {
@@ -163,7 +197,7 @@ function applyFilters() {
 
   const metrics = buildMetrics(currentRows);
   renderMetrics($("#metrics"), metrics);
-  renderTable($("#matrixTable"), currentRows, payload.columns);
+  renderTable($("#matrixTable"), currentRows, payload.columns, true);
   const uniqueSubjects = new Set(currentRows.map((row) => cleanValue(row.MATERIA)).filter(Boolean)).size;
   $("#resultSummary").innerHTML = `<strong>${currentRows.length.toLocaleString("es-AR")}</strong> filas cumplen con los filtros seleccionados (${uniqueSubjects.toLocaleString("es-AR")} materias, sin mezclar información entre filas).`;
 }
@@ -218,7 +252,7 @@ async function init() {
   renderStats();
   renderMetrics($("#metrics"), payload.metrics);
   renderAuditTable(payload.metrics);
-  renderTable($("#cleanTable"), payload.cleanRows, payload.columns);
+  renderTable($("#cleanTable"), payload.cleanRows, payload.columns, true);
   setupNavigation();
   applyFilters();
 

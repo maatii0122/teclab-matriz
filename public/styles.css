@@ -346,6 +346,15 @@ td {
   white-space: pre-wrap;
 }
 
+.subject-cell {
+  background: #eef8fa;
+  color: var(--deep-teal);
+  font-weight: 800;
+  text-align: center;
+  vertical-align: middle;
+  width: 180px;
+}
+
 @media (max-width: 900px) {
   .sidebar {
     position: static;

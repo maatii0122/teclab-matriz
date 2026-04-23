@@ -157,7 +157,37 @@ def write_formatted_excel(data: pd.DataFrame, path: Path) -> None:
         for cell in row:
             cell.alignment = Alignment(vertical="top", wrap_text=cell.column_letter in wrap_letters)
 
+    subject_column = list(data.columns).index("MATERIA") + 1
+    merge_repeated_subjects(ws, subject_column)
+
     wb.save(path)
+
+
+def merge_repeated_subjects(ws, column_idx: int) -> None:
+    start_row = 2
+    current_value = ws.cell(row=start_row, column=column_idx).value
+
+    for row_idx in range(start_row + 1, ws.max_row + 2):
+        next_value = ws.cell(row=row_idx, column=column_idx).value if row_idx <= ws.max_row else None
+        if next_value == current_value:
+            continue
+
+        end_row = row_idx - 1
+        if current_value and end_row > start_row:
+            ws.merge_cells(
+                start_row=start_row,
+                start_column=column_idx,
+                end_row=end_row,
+                end_column=column_idx,
+            )
+            ws.cell(row=start_row, column=column_idx).alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+                wrap_text=True,
+            )
+
+        start_row = row_idx
+        current_value = next_value
 
 
 def main() -> None:
