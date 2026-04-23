@@ -14,6 +14,15 @@ function splitValues(value) {
   return text ? text.split(",").map((part) => part.trim()).filter(Boolean) : [];
 }
 
+function periodValues(value) {
+  const text = cleanValue(value).toUpperCase();
+  const combined = text.match(/^(\d)A\s*\/\s*(\d)?B$/);
+  if (combined) {
+    return [`${combined[1]}A`, `${combined[1]}B`];
+  }
+  return splitValues(text);
+}
+
 function uniqueValues(values, split = false) {
   const seen = new Set();
   const result = [];
@@ -40,6 +49,12 @@ function selectedValues(select) {
 function matchesAny(value, selected) {
   if (!selected.length) return true;
   const values = new Set(splitValues(value));
+  return selected.some((item) => values.has(item));
+}
+
+function matchesPeriod(value, selected) {
+  if (!selected.length) return true;
+  const values = new Set(periodValues(value));
   return selected.some((item) => values.has(item));
 }
 
@@ -138,7 +153,7 @@ function applyFilters() {
     (row) =>
       matchesAny(row.CARRERAS, careers) &&
       matchesAny(row.AÑO, years) &&
-      matchesAny(row.PERIODO, periods),
+      matchesPeriod(row.PERIODO, periods),
   );
 
   currentRows = buildCleanMatrix(filteredRaw).filter((row) => {
@@ -198,7 +213,7 @@ async function init() {
 
   fillSelect("#careerFilter", uniqueValues(payload.rawRows.map((row) => row.CARRERAS), true));
   fillSelect("#yearFilter", uniqueValues(payload.rawRows.map((row) => row.AÑO), true));
-  fillSelect("#periodFilter", uniqueValues(payload.rawRows.map((row) => row.PERIODO), true));
+  fillSelect("#periodFilter", uniqueValues(payload.rawRows.flatMap((row) => periodValues(row.PERIODO)), false));
 
   renderStats();
   renderMetrics($("#metrics"), payload.metrics);

@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from io import BytesIO
 import unicodedata
+import re
 
 st.set_page_config(
     page_title="Matriz general IPP",
@@ -101,7 +102,7 @@ st.markdown(
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
     df = pd.read_excel(path, engine="openpyxl")
-    return df
+    return normalize_data(df)
 
 def clean_value(value) -> str | None:
     if pd.isna(value):
@@ -115,6 +116,38 @@ def split_values(value) -> list[str]:
     if not text:
         return []
     return [part.strip() for part in text.split(",") if part.strip()]
+
+
+def normalize_period(value) -> str | None:
+    text = clean_value(value)
+    if not text:
+        return None
+    compact = re.sub(r"\s+", "", text.upper())
+    match = re.fullmatch(r"(\d)A/B", compact)
+    if match:
+        number = match.group(1)
+        return f"{number}A / {number}B"
+    match = re.fullmatch(r"(\d)([AB])", compact)
+    if match:
+        return f"{match.group(1)}{match.group(2)}"
+    return text
+
+
+def period_values(value) -> list[str]:
+    text = normalize_period(value)
+    if not text:
+        return []
+    match = re.fullmatch(r"(\d)A\s*/\s*(\d)?B", text.upper())
+    if match:
+        number = match.group(1)
+        return [f"{number}A", f"{number}B"]
+    return split_values(text)
+
+
+def normalize_data(data: pd.DataFrame) -> pd.DataFrame:
+    normalized = data.copy()
+    normalized["PERIODO"] = normalized["PERIODO"].apply(normalize_period)
+    return normalized
 
 
 def unique_values(values, split: bool = False) -> list[str]:
@@ -133,8 +166,16 @@ def filter_options(data: pd.DataFrame, column: str) -> list[str]:
     return sorted(unique_values(data[column], split=True))
 
 
+def period_filter_options(data: pd.DataFrame) -> list[str]:
+    return sorted(unique_values(data["PERIODO"].apply(period_values).explode(), split=False))
+
+
 def matches_any(value, selected: list[str]) -> bool:
     return bool(set(split_values(value)) & set(selected))
+
+
+def matches_period(value, selected: list[str]) -> bool:
+    return bool(set(period_values(value)) & set(selected))
 
 
 def sort_text(value) -> str:
@@ -221,7 +262,7 @@ if page == "Matriz":
         filter_options(df, "CARRERAS"),
     )
     año_filter = st.sidebar.multiselect("Año", filter_options(df, "AÑO"))
-    periodo_filter = st.sidebar.multiselect("Periodo", filter_options(df, "PERIODO"))
+    periodo_filter = st.sidebar.multiselect("Periodo", period_filter_options(df))
 
     filtered = df.copy()
     if carrera_filter:
@@ -229,7 +270,7 @@ if page == "Matriz":
     if año_filter:
         filtered = filtered[filtered["AÑO"].apply(lambda value: matches_any(value, año_filter))]
     if periodo_filter:
-        filtered = filtered[filtered["PERIODO"].apply(lambda value: matches_any(value, periodo_filter))]
+        filtered = filtered[filtered["PERIODO"].apply(lambda value: matches_period(value, periodo_filter))]
 
     matrix_view = build_clean_matrix(filtered)
     unique_subjects = matrix_view["MATERIA"].nunique(dropna=True)
@@ -257,7 +298,7 @@ else:
     info_cols[0].metric("Filas originales", f"{len(df):,}")
     info_cols[1].metric("Materias únicas", f"{df['MATERIA'].nunique(dropna=True):,}")
     info_cols[2].metric("Carreras", f"{len(filter_options(df, 'CARRERAS')):,}")
-    info_cols[3].metric("Períodos", f"{len(filter_options(df, 'PERIODO')):,}")
+    info_cols[3].metric("Períodos", f"{len(period_filter_options(df)):,}")
 
     st.markdown("### Lógica de limpieza")
     st.markdown(

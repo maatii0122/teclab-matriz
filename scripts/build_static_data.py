@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import unicodedata
 from pathlib import Path
 
@@ -42,6 +43,32 @@ def split_values(value) -> list[str]:
     return [part.strip() for part in text.split(",") if part.strip()]
 
 
+def normalize_period(value) -> str | None:
+    text = clean_value(value)
+    if not text:
+        return None
+    compact = re.sub(r"\s+", "", text.upper())
+    match = re.fullmatch(r"(\d)A/B", compact)
+    if match:
+        number = match.group(1)
+        return f"{number}A / {number}B"
+    match = re.fullmatch(r"(\d)([AB])", compact)
+    if match:
+        return f"{match.group(1)}{match.group(2)}"
+    return text
+
+
+def period_values(value) -> list[str]:
+    text = normalize_period(value)
+    if not text:
+        return []
+    match = re.fullmatch(r"(\d)A\s*/\s*(\d)?B", text.upper())
+    if match:
+        number = match.group(1)
+        return [f"{number}A", f"{number}B"]
+    return split_values(text)
+
+
 def unique_values(values, split: bool = False) -> list[str]:
     seen = set()
     result = []
@@ -62,6 +89,12 @@ def sort_text(value) -> str:
 
 def build_clean_matrix(data: pd.DataFrame) -> pd.DataFrame:
     return data.sort_values("MATERIA", key=lambda values: values.map(sort_text), kind="mergesort")
+
+
+def normalize_data(data: pd.DataFrame) -> pd.DataFrame:
+    normalized = data.copy()
+    normalized["PERIODO"] = normalized["PERIODO"].apply(normalize_period)
+    return normalized
 
 
 def records(data: pd.DataFrame) -> list[dict[str, str]]:
@@ -128,7 +161,7 @@ def write_formatted_excel(data: pd.DataFrame, path: Path) -> None:
 
 
 def main() -> None:
-    raw = pd.read_excel(SOURCE, engine="openpyxl")
+    raw = normalize_data(pd.read_excel(SOURCE, engine="openpyxl"))
     clean = build_clean_matrix(raw)
 
     PUBLIC_DATA.parent.mkdir(parents=True, exist_ok=True)
@@ -143,7 +176,7 @@ def main() -> None:
             "cleanRows": len(clean),
             "uniqueSubjects": int(raw["MATERIA"].nunique(dropna=True)),
             "careers": len(unique_values(raw["CARRERAS"], split=True)),
-            "periods": len(unique_values(raw["PERIODO"], split=True)),
+            "periods": len(unique_values(raw["PERIODO"].apply(period_values).explode(), split=False)),
         },
     }
 
